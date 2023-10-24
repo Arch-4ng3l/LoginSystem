@@ -2,10 +2,12 @@ package loginsystem
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 
 	jwt "github.com/golang-jwt/jwt/v5"
 )
@@ -23,6 +25,22 @@ type LoginSystem struct {
 	urlPath       string
 }
 
+type LoginError struct {
+	msg string
+}
+
+func (err LoginError) Error() string {
+	return "Login Error: " + err.msg
+}
+
+type SignUpError struct {
+	msg string
+}
+
+func (err SignUpError) Error() string {
+	return "SignUp Error: " + err.msg
+}
+
 func NewLoginSystem(addr, path string, store Storage) *LoginSystem {
 	return &LoginSystem{
 		listeningAddr: addr,
@@ -32,6 +50,7 @@ func NewLoginSystem(addr, path string, store Storage) *LoginSystem {
 }
 
 func (ls *LoginSystem) Run(secret string) error {
+	fmt.Println("Starting Login System")
 	jwtSecret = secret
 	http.HandleFunc(ls.urlPath+"/login", httpFuncToHandler(ls.handleLogin))
 	http.HandleFunc(ls.urlPath+"/signup", httpFuncToHandler(ls.handleSignUp))
@@ -49,11 +68,15 @@ func (ls *LoginSystem) handleLogin(w http.ResponseWriter, r *http.Request) error
 
 	acc := ls.store.GetUserInformations(loginReq)
 	if acc == nil {
-		return fmt.Errorf("User does not exist")
+		return LoginError{
+			msg: "User Does Not Exist",
+		}
 	}
 
 	if createHash(loginReq.Password) != acc.Password {
-		return fmt.Errorf("Invalid Account Password")
+		return LoginError{
+			msg: "Invalid Account Password",
+		}
 	}
 
 	token, err := createJWT(acc)
@@ -73,13 +96,24 @@ func (ls *LoginSystem) handleSignUp(w http.ResponseWriter, r *http.Request) erro
 	decoder.Decode(signupReq)
 
 	if signupReq.IsEmpty() {
-		return fmt.Errorf("Not A Valid Request Format")
+		return SignUpError{
+			msg: "Not A Valid Request Format",
+		}
 	}
 
+	regex, _ := regexp.Compile("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")
+
+	if !regex.Match([]byte(signupReq.Email)) {
+		return SignUpError{
+			msg: "Not A Valid Email",
+		}
+	}
 	signupReq.Password = createHash(signupReq.Password)
 
 	if !ls.store.CreateNewUser(signupReq) {
-		return fmt.Errorf("Couldnt Create New User")
+		return SignUpError{
+			msg: "Couldnt Create New User",
+		}
 	}
 
 	acc := &Account{
@@ -150,7 +184,7 @@ func createHash(in string) string {
 	if err != nil {
 		return ""
 	}
-	return string(hash.Sum(nil))
+	return hex.EncodeToString(hash.Sum(nil))
 }
 
 func createJWT(acc *Account) (string, error) {

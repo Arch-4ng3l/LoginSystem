@@ -13,21 +13,33 @@ type AccMap struct {
 	accounts map[string]*Account
 }
 
+func (accmap *AccMap) Print() {
+	for _, p := range accmap.accounts {
+		p.Print()
+	}
+}
+
 type FileStorage struct {
 	accFile  *os.File
 	accPath  string
 	accounts AccMap
 }
 
-func (f *FileStorage) CreateNew() {
-	err := os.Mkdir("Files", os.ModePerm)
-	if err != nil {
-		return
+func (f *FileStorage) NewFile() {
+	var err error
+	if _, err := os.Stat("Files"); err != nil {
+		err := os.Mkdir("Files", os.ModePerm)
+		if err != nil {
+			return
+		}
 	}
-	f.accPath = startPath + "acc.json"
-	f.accFile, err = os.Create(f.accPath)
-	if err != nil {
-		return
+
+	f.accPath = "Files/acc.json"
+	if _, err := os.Stat(f.accPath); err != nil {
+		f.accFile, err = os.Create(f.accPath)
+		if err != nil {
+			return
+		}
 	}
 
 	raw, err := os.ReadFile(f.accPath)
@@ -35,13 +47,10 @@ func (f *FileStorage) CreateNew() {
 		return
 	}
 
-	var accounts map[string]*Account
-	if err := json.Unmarshal(raw, &accounts); err != nil {
+	f.accounts.accounts = make(map[string]*Account)
+	if err := json.Unmarshal(raw, &f.accounts.accounts); err != nil {
 		return
 	}
-
-	f.accounts.accounts = accounts
-
 }
 
 func (f *FileStorage) CreateNewUser(req *SignUpRequest) bool {
@@ -67,7 +76,7 @@ func (f *FileStorage) CreateNewUser(req *SignUpRequest) bool {
 	return true
 }
 
-func (f *FileStorage) GetUserInformation(req *LoginRequest) *Account {
+func (f *FileStorage) GetUserInformations(req *LoginRequest) *Account {
 	f.accounts.Lock()
 	defer f.accounts.Unlock()
 
