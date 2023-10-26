@@ -2,6 +2,7 @@ package loginsystem
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -49,6 +50,7 @@ func NewLoginSystem(addr, path string, store Storage) *LoginSystem {
 }
 
 func (ls *LoginSystem) Run(secret string) error {
+	fmt.Println("Starting Login System")
 	jwtSecret = secret
 	http.HandleFunc(ls.urlPath+"/login", httpFuncToHandler(ls.handleLogin))
 	http.HandleFunc(ls.urlPath+"/signup", httpFuncToHandler(ls.handleSignUp))
@@ -133,7 +135,7 @@ func (ls *LoginSystem) handleSignUp(w http.ResponseWriter, r *http.Request) erro
 
 }
 
-func (ls *LoginSystem) AuthWithJWT(r *http.Request) bool {
+func (ls *LoginSystem) AuthWithJWT(r *http.Request) *Account {
 	cookie, err := r.Cookie("token")
 	temp := ""
 	if err != nil {
@@ -144,13 +146,13 @@ func (ls *LoginSystem) AuthWithJWT(r *http.Request) bool {
 
 	token, err := parseJWT(temp)
 	if err != nil {
-		return false
+		return nil
 	}
 
 	name, ok := token.Claims.(jwt.MapClaims)["username"].(string)
 	password, ok2 := token.Claims.(jwt.MapClaims)["password"].(string)
 	if !ok && !ok2 {
-		return false
+		return nil
 	}
 
 	loginReq := &LoginRequest{
@@ -160,10 +162,10 @@ func (ls *LoginSystem) AuthWithJWT(r *http.Request) bool {
 	acc := ls.store.GetUserInformations(loginReq)
 
 	if password != acc.Password {
-		return false
+		return nil
 	}
 
-	return true
+	return acc
 }
 
 type httpFunction func(http.ResponseWriter, *http.Request) error
@@ -182,7 +184,7 @@ func createHash(in string) string {
 	if err != nil {
 		return ""
 	}
-	return string(hash.Sum(nil))
+	return hex.EncodeToString(hash.Sum(nil))
 }
 
 func createJWT(acc *Account) (string, error) {

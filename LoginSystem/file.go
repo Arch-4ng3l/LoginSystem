@@ -51,8 +51,6 @@ func (f *FileStorage) NewFile() {
 	if err := json.Unmarshal(raw, &f.accounts.accounts); err != nil {
 		return
 	}
-	f.accounts.Print()
-
 }
 
 func (f *FileStorage) CreateNewUser(req *SignUpRequest) bool {
@@ -62,7 +60,6 @@ func (f *FileStorage) CreateNewUser(req *SignUpRequest) bool {
 
 	_, ok := f.accounts.accounts[req.Name]
 	if ok {
-		print("already exits")
 		return false
 	}
 	acc := &Account{
@@ -79,7 +76,7 @@ func (f *FileStorage) CreateNewUser(req *SignUpRequest) bool {
 	return true
 }
 
-func (f *FileStorage) GetUserInformation(req *LoginRequest) *Account {
+func (f *FileStorage) GetUserInformations(req *LoginRequest) *Account {
 	f.accounts.Lock()
 	defer f.accounts.Unlock()
 
