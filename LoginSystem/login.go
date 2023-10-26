@@ -174,6 +174,7 @@ func httpFuncToHandler(f httpFunction) func(http.ResponseWriter, *http.Request) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
 			log.Println(err)
+			w.WriteHeader(400)
 		}
 	}
 }
