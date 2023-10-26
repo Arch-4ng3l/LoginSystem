@@ -135,7 +135,7 @@ func (ls *LoginSystem) handleSignUp(w http.ResponseWriter, r *http.Request) erro
 
 }
 
-func (ls *LoginSystem) AuthWithJWT(r *http.Request) bool {
+func (ls *LoginSystem) AuthWithJWT(r *http.Request) *Account {
 	cookie, err := r.Cookie("token")
 	temp := ""
 	if err != nil {
@@ -146,13 +146,13 @@ func (ls *LoginSystem) AuthWithJWT(r *http.Request) bool {
 
 	token, err := parseJWT(temp)
 	if err != nil {
-		return false
+		return nil
 	}
 
 	name, ok := token.Claims.(jwt.MapClaims)["username"].(string)
 	password, ok2 := token.Claims.(jwt.MapClaims)["password"].(string)
 	if !ok && !ok2 {
-		return false
+		return nil
 	}
 
 	loginReq := &LoginRequest{
@@ -162,10 +162,10 @@ func (ls *LoginSystem) AuthWithJWT(r *http.Request) bool {
 	acc := ls.store.GetUserInformations(loginReq)
 
 	if password != acc.Password {
-		return false
+		return nil
 	}
 
-	return true
+	return acc
 }
 
 type httpFunction func(http.ResponseWriter, *http.Request) error
