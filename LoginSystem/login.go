@@ -174,7 +174,8 @@ func httpFuncToHandler(f httpFunction) func(http.ResponseWriter, *http.Request) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
 			log.Println(err)
-			w.WriteHeader(400)
+			w.WriteHeader(404)
+			json.NewEncoder(w).Encode(err)
 		}
 	}
 }
