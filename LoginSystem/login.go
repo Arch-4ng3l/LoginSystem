@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"regexp"
 
@@ -23,6 +22,7 @@ type LoginSystem struct {
 	listeningAddr string
 	store         Storage
 	urlPath       string
+	errors        chan error
 }
 
 type LoginError struct {
@@ -41,19 +41,20 @@ func (err SignUpError) Error() string {
 	return "SignUp Error: " + err.msg
 }
 
-func NewLoginSystem(addr, path string, store Storage) *LoginSystem {
+func NewLoginSystem(addr, path string, store Storage, errs chan error) *LoginSystem {
 	return &LoginSystem{
 		listeningAddr: addr,
 		urlPath:       path,
 		store:         store,
+		errors:        errs,
 	}
 }
 
 func (ls *LoginSystem) Run(secret string) error {
 	fmt.Println("Starting Login System")
 	jwtSecret = secret
-	http.HandleFunc(ls.urlPath+"/login", httpFuncToHandler(ls.handleLogin))
-	http.HandleFunc(ls.urlPath+"/signup", httpFuncToHandler(ls.handleSignUp))
+	http.HandleFunc(ls.urlPath+"/login", ls.httpFuncToHandler(ls.handleLogin))
+	http.HandleFunc(ls.urlPath+"/signup", ls.httpFuncToHandler(ls.handleSignUp))
 	return nil
 }
 
@@ -170,12 +171,10 @@ func (ls *LoginSystem) AuthWithJWT(r *http.Request) *Account {
 
 type httpFunction func(http.ResponseWriter, *http.Request) error
 
-func httpFuncToHandler(f httpFunction) func(http.ResponseWriter, *http.Request) {
+func (ls *LoginSystem) httpFuncToHandler(f httpFunction) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
-			log.Println(err)
-			w.WriteHeader(404)
-			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			ls.errors <- err
 		}
 	}
 }
