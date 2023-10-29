@@ -179,7 +179,8 @@ type httpFunction func(http.ResponseWriter, *http.Request) error
 func (ls *LoginSystem) httpFuncToHandler(f httpFunction) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
-			ls.errors <- ErrorStruct{err, w}
+			w.WriteHeader(400)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		}
 	}
 }
