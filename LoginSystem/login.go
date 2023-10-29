@@ -22,7 +22,7 @@ type LoginSystem struct {
 	listeningAddr string
 	store         Storage
 	urlPath       string
-	errors        chan error
+	errors        chan ErrorStruct
 }
 
 type LoginError struct {
@@ -41,7 +41,7 @@ func (err SignUpError) Error() string {
 	return "SignUp Error: " + err.msg
 }
 
-func NewLoginSystem(addr, path string, store Storage, errs chan error) *LoginSystem {
+func NewLoginSystem(addr, path string, store Storage, errs chan ErrorStruct) *LoginSystem {
 	return &LoginSystem{
 		listeningAddr: addr,
 		urlPath:       path,
@@ -169,12 +169,17 @@ func (ls *LoginSystem) AuthWithJWT(r *http.Request) *Account {
 	return acc
 }
 
+type ErrorStruct struct {
+	Err error
+	W   http.ResponseWriter
+}
+
 type httpFunction func(http.ResponseWriter, *http.Request) error
 
 func (ls *LoginSystem) httpFuncToHandler(f httpFunction) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
-			ls.errors <- err
+			ls.errors <- ErrorStruct{err, w}
 		}
 	}
 }
