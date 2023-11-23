@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 
@@ -179,7 +180,8 @@ type httpFunction func(http.ResponseWriter, *http.Request) error
 func (ls *LoginSystem) httpFuncToHandler(f httpFunction) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := f(w, r); err != nil {
-			w.WriteHeader(400)
+			log.Println(err)
+			w.WriteHeader(404)
 			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		}
 	}
